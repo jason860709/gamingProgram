@@ -1,0 +1,376 @@
+<html><head>
+<style>
+#info {
+  position: absolute;
+  top: 2%;
+  width: 100%;
+  padding: 10px;
+  text-align: left;
+  color: #ffff00
+}
+body {
+  overflow: hidden
+}
+</style>
+</head>
+
+<body> 
+	<div id="info">
+  <br> Homework 0
+  <br>https://poly.google.com/view/fOGpA1hakNg
+</div>
+	<script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/84/three.min.js"></script>
+	<script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+	<script src="https://rawgit.com/mrdoob/three.js/master/examples/js/loaders/MTLLoader.js"></script>
+	<script src="https://rawgit.com/mrdoob/three.js/master/examples/js/loaders/OBJLoader.js"></script>
+
+<script>
+
+var renderer, camera, controls, scene;
+var angle;
+var howlong;
+var speed;
+var street;
+var car;
+var train;
+var  bar = [];
+
+init();
+animate();
+
+function traingogo(){
+	if(street == 1){
+		car.position.x -= speed;
+		//console.log (car.position.x)
+		if(car.position.x == -50){
+			street = 0;
+			//console.log (car.position)
+		}
+	}
+	else if(street == 0){
+		angle = angle + 0.01;  // radian
+		car.rotation.y = angle;
+		car.position.x = car.position.x + -0.5*Math.cos(angle);
+		car.position.z = car.position.z + 0.5*Math.sin(angle);
+		//console.log (car.position)
+		if(car.position.x > -50){
+			street = -1;
+			car.position.set(-50,0,50);
+			//console.log (car.position);
+		}
+	}
+	else if(street == -1){
+		car.position.x += speed;
+		//console.log (car.position.x)
+		if(car.position.x == 50){
+			street = 3;
+			//console.log (car.position)
+		}
+	}
+	else if(street == 3){
+		angle = angle + 0.01;  // radian
+		car.rotation.y = angle;
+		car.position.x = car.position.x + -0.5*Math.cos(angle);
+		car.position.z = car.position.z + 0.5*Math.sin(angle);
+		//console.log (car.position)
+		if(car.position.x < 50){
+			street = 1;
+			car.position.set(50,0,-50);
+			//console.log (car.position);
+			}
+	}
+};
+
+function buildcar(){
+	car =  new THREE.Object3D();
+	var mtlLoader = new THREE.MTLLoader();
+	mtlLoader.setPath('strts/');
+	mtlLoader.load('materials.mtl', function(materials) {
+		materials.preload();
+		var objLoader = new THREE.OBJLoader();
+		objLoader.setMaterials(materials);
+		objLoader.setPath('strts/');
+		objLoader.load('model.obj', function(object) {
+			var theObject =  unitize (object, 15);
+			theObject.rotation.y = Math.PI/2
+			car.add(theObject);
+			scene.add (car);
+			
+			object.traverse (
+				function(mesh){
+					if(mesh instanceof THREE.Mesh){
+						mesh.material.side = THREE.DoubleSide;
+						}
+						});
+			//scene.add (new THREE.BoxHelper (theObject));
+		}, onProgress, onError);
+});
+
+	function unitize (object, targetSize) {  
+	  
+	  // find bounding box of 'object'
+	  var box3 = new THREE.Box3();
+	  box3.setFromObject (object);
+	  var size = new THREE.Vector3();
+	  size.subVectors (box3.max, box3.min);
+	  var center = new THREE.Vector3();
+	  center.addVectors(box3.max, box3.min).multiplyScalar (0.5);
+	   
+	  // uniform scaling according to objSize
+	  var objSize = Math.max (size.x, size.y, size.z); 
+	  var scaleSet = targetSize/objSize;
+	  
+	  var theObject =  new THREE.Object3D();
+	  theObject.add (object);
+	  object.scale.set (scaleSet, scaleSet, scaleSet);
+	  object.position.set (-center.x*scaleSet, -center.y*scaleSet + size.y/2*scaleSet, -center.z*scaleSet);
+	  
+	  return theObject;
+	}
+	var onProgress = function(xhr) {
+    if (xhr.lengthComputable) {
+      var percentComplete = xhr.loaded / xhr.total * 100;
+      console.log(Math.round(percentComplete, 2) + '% downloaded');
+    }
+  };
+
+  var onError = function(xhr) {};
+};
+
+function buildtrash(){
+
+	var texture = new THREE.TextureLoader().load( 'strts/trash.jpg' );
+	
+	var barM = new THREE.MeshLambertMaterial({
+	color: 0x8888FF,
+    map: texture
+  });
+  var x = 50;
+  var y = 50;
+  var z = -50;
+	bar[0] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+	bar[0].position.set(50, 0, -50);
+	
+	bar[1] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+	bar[1].position.set(40,0,-50);
+	x += 1;
+	
+	for (var i = 0 ; i < 10 ; i++){
+		bar[i] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+		bar[i].position.set(x, 0, -50)
+		x=x-10;
+	}
+	
+	for (var i = 10 ; i < 20 ; i++){
+		bar[i] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+		bar[i].position.set(y, 0, 50)
+		y=y-10;
+	}
+	
+		bar[21] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+		bar[21].position.set(-100, 0, 0);
+		bar[21].rotation.y = Math.PI/2;
+		
+		bar[22] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+		bar[22].position.set(100, 0, 0);
+		bar[22].rotation.y = Math.PI/2;
+		
+		bar[23] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+		bar[23].position.set(-50, 0, -50);
+		bar[23].rotation.y = Math.PI/18;
+		
+		bar[24] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+		bar[24].position.set(-60, 0, -48);
+		bar[24].rotation.y = Math.PI/9;
+		
+		bar[25] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+		bar[25].position.set(-70, 0, -45);
+		bar[25].rotation.y = Math.PI/6;
+		
+		bar[26] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+		bar[26].position.set(-80, 0, -39);
+		bar[26].rotation.y = Math.PI/4;
+		
+		bar[27] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+		bar[27].position.set(-90, 0, -29);
+		bar[27].rotation.y = Math.PI/3;
+		
+		bar[28] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+		bar[28].position.set(-96, 0, -16);
+		bar[28].rotation.y = Math.PI/2.5;
+		
+		bar[29] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+		bar[29].position.set(-50, 0, 50);
+		bar[29].rotation.y = -Math.PI/18;
+		
+		bar[30] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+		bar[30].position.set(-60, 0, 48);
+		bar[30].rotation.y = -Math.PI/9;
+	
+		bar[31] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+		bar[31].position.set(-70, 0, 45);
+		bar[31].rotation.y = -Math.PI/6;
+		
+		bar[32] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+		bar[32].position.set(-80, 0, 39);
+		bar[32].rotation.y = -Math.PI/4;
+	
+		bar[33] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+		bar[33].position.set(-90, 0, 29);
+		bar[33].rotation.y = -Math.PI/3;
+	
+		bar[34] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+		bar[34].position.set(-96, 0, 16);
+		bar[34].rotation.y = -Math.PI/2.5;
+		
+		bar[35] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+		bar[35].position.set(60, 0, 48);
+		bar[35].rotation.y = Math.PI/9;
+	
+		bar[36] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+		bar[36].position.set(70, 0, 45);
+		bar[36].rotation.y = Math.PI/6;
+		
+		bar[37] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+		bar[37].position.set(80, 0, 39);
+		bar[37].rotation.y = Math.PI/4;
+	
+		bar[38] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+		bar[38].position.set(90, 0, 29);
+		bar[38].rotation.y = Math.PI/3;
+	
+		bar[39] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+		bar[39].position.set(96, 0, 16);
+		bar[39].rotation.y = Math.PI/2.5;
+		
+		bar[40] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+		bar[40].position.set(60, 0, -48);
+		bar[40].rotation.y = -Math.PI/9;
+	
+		bar[41] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+		bar[41].position.set(70, 0, -45);
+		bar[41].rotation.y = -Math.PI/6;
+		
+		bar[42] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+		bar[42].position.set(80, 0, -39);
+		bar[42].rotation.y = -Math.PI/4;
+	
+		bar[43] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+		bar[43].position.set(90, 0, -29);
+		bar[43].rotation.y = -Math.PI/3;
+	
+		bar[44] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 10), barM.clone());
+		bar[44].position.set(96, 0, -16);
+		bar[44].rotation.y = -Math.PI/2.5;
+		
+	
+	
+		
+	console.log(bar);
+	
+  for (var key in bar) {
+    scene.add(bar[key]);
+  }
+}
+
+function init() {
+	renderer = new THREE.WebGLRenderer({
+	  antialias: true
+	});
+	renderer.setSize(window.innerWidth, window.innerHeight);
+	renderer.setClearColor(0x888888);
+	document.body.appendChild(renderer.domElement);
+	camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000);
+	camera.position.z = 50;  // important
+	camera.position.y = 150;
+	
+	controls = new THREE.OrbitControls(camera, renderer.domElement);
+	scene = new THREE.Scene();
+	
+	var ambient = new THREE.AmbientLight(0x444444);
+  scene.add(ambient);
+
+  var directionalLight = new THREE.DirectionalLight(0xffffff);
+  directionalLight.position.set(0, 1, 1).normalize();
+  scene.add(directionalLight);
+	  
+	let gridXZ = new THREE.GridHelper(200, 10, 'red', 'white');
+	//scene.add(gridXZ);
+
+	let axes = new THREE.AxisHelper (10);
+	scene.add (axes);
+	
+	var geometry = new THREE.Geometry();
+    geometry.vertices.push (
+ new THREE.Vector3 ( -250,0,0),
+ new THREE.Vector3 (  250,0,0),
+ new THREE.Vector3 ( 250,500,0),
+ new THREE.Vector3 (-250,500,0)
+ );
+ var face;
+ face = new THREE.Face3 (0,1,2); 
+ geometry.faces.push (face);
+ face = new THREE.Face3 (0,2,3);
+ geometry.faces.push (face);
+ 
+ geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,0),new THREE.Vector2(1,0),new THREE.Vector2(1,1)]);
+ geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,0),new THREE.Vector2(1,1),new THREE.Vector2(0,1)]);
+
+ geometry.computeBoundingSphere();
+ geometry.computeFaceNormals();
+ geometry.computeVertexNormals();
+
+  material = new THREE.MeshLambertMaterial (
+ {map: new THREE.ImageUtils.loadTexture ('strts/road.png'),
+ side: THREE.DoubleSide}
+ );
+ var bs = new THREE.Mesh (geometry, material);
+ bs.position.set (0,0,250);
+ bs.rotation.x = -Math.PI / 2;
+ scene.add (bs);
+	
+ 
+	angle = 0;
+	street = 1;
+	speed = 1;
+
+	buildcar();
+	buildtrash();
+	car.position.set(50,0,-50)
+	
+	var light = new THREE.PointLight(0xffffff);
+  light.position.set(150, 30, 0);
+  //scene.add(light);
+  var light2 = new THREE.PointLight(0xffffff);
+  light2.position.set(-150, 30, 0);
+  //scene.add(light2);
+  var light3 = new THREE.PointLight(0xffffff);
+  light3.position.set(0, 30, -150);
+  //scene.add(light3);
+  var light4 = new THREE.PointLight(0xffffff);
+  light4.position.set(0, 30, 150);
+  //scene.add(light4);
+	
+}
+
+function animate() {
+  controls.update();
+  renderer.render (scene, camera);
+  traingogo();
+  
+  //console.log(car.position);
+  requestAnimationFrame (animate);
+  render();
+}
+
+function render() {
+  
+  renderer.render(scene, camera);
+
+}
+</script><div><canvas width="1920" height="950" style="width: 1536px; height: 760px;"></canvas></div>
+
+
+
+</body></html>
