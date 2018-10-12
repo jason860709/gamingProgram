@@ -1,0 +1,307 @@
+<html><head>
+<style>
+#info {
+  position: absolute;
+  top: 0px;
+  width: 100%;
+  padding: 10px;
+  text-align: center;
+  color: #ffff00
+}
+
+body {
+  overflow: hidden;
+}
+
+
+</style>
+</head>
+
+<body> 
+	<div id="info">
+  <br> Homework 1
+  <br><br>
+  
+  <button id="mybutton" style="position:absolute">
+  change
+  </button>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/84/three.min.js"></script>
+<script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+<script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
+<script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+<script src="https://rawgit.com/mrdoob/three.js/master/examples/js/loaders/MTLLoader.js"></script>
+<script src="https://rawgit.com/mrdoob/three.js/master/examples/js/loaders/OBJLoader.js"></script>
+<script>
+
+var camera, scene, renderer, mesh, controls;
+var keyboard = new KeyboardState();
+var clock;
+var engine = false;
+var change3rd = false;
+var car;
+var pos = new THREE.Vector3();
+var speed, angle, vel;
+var pointLight;
+
+$("#mybutton").click(function() {
+	change3rd = !change3rd;
+	console.log(change3rd);
+});
+
+(function() {
+  Math.clamp = function(val,min,max){
+    return Math.min(Math.max(val,min),max);
+    
+  }})();
+  
+init();
+animate();
+
+
+function buildRoad(){
+	var AllRoad = new THREE.Object3D();
+	var geometry = new THREE.PlaneGeometry(2000,2000,);
+	var material = new THREE.MeshPhongMaterial({
+		color: 0x1f3d0c,
+		side: THREE.DoubleSide,
+	});
+	var basicroad = new THREE.Mesh(geometry, material);
+	basicroad.rotation.x = Math.PI/2;
+	AllRoad.add(basicroad);
+	
+	var geometry2 = new THREE.PlaneGeometry(2500,200);
+	var material2 = new THREE.MeshPhongMaterial({
+		side: THREE.DoubleSide,
+		map: THREE.ImageUtils.loadTexture("strts/small.jpg"),
+	});
+	
+	let loader = new THREE.TextureLoader()
+	loader.crossOrigin = '';
+	
+	var texture = loader.load('strts/zebra.jpg');
+	texture.repeat.set(4, 1);
+	texture.wrapS = THREE.RepeatWrapping;
+	texture.wrapT = THREE.RepeatWrapping;
+  
+  
+	var geometry3 = new THREE.PlaneGeometry(1500,100);
+	var material3 = new THREE.MeshPhongMaterial({
+		side: THREE.DoubleSide,
+		map: texture,
+	});
+	
+	var geometry4 = new THREE.PlaneGeometry(2500,600);
+	
+	var road1 = new THREE.Mesh(geometry2, material2);
+	road1.rotation.x = Math.PI/2;
+	road1.position.set(0,1,600);
+	
+	var road2 = new THREE.Mesh(geometry2, material2);
+	road2.rotation.x = Math.PI/2;
+	road2.position.set(0,1,100);
+	
+	var road3 = new THREE.Mesh(geometry2, material2);
+	road3.rotation.x = Math.PI/2;
+	road3.position.set(0,1,-600);
+	
+	var road4 = new THREE.Mesh(geometry2, material2);
+	road4.rotation.x = Math.PI/2;
+	road4.position.set(0,1,-100);
+	
+	var road5 = new THREE.Mesh(geometry4, material2);
+	road5.rotation.x = Math.PI/2;
+	road5.rotation.z = Math.PI/2;
+	road5.position.set(0,2,0);
+	
+	var manRoad = new THREE.Mesh(geometry3, material3);
+	manRoad.rotation.x = Math.PI/2;
+	manRoad.rotation.z = Math.PI/2;
+	manRoad.position.set(350,2,0);
+	
+	var manRoad1 = new THREE.Mesh(geometry3, material3);
+	manRoad1.rotation.x = Math.PI/2;
+	manRoad1.rotation.z = Math.PI/2;
+	manRoad1.position.set(-350,2,0);
+	
+	var geometry5 = new THREE.BoxGeometry(50,350,50);
+	var material5 = new THREE.MeshBasicMaterial({
+		side: THREE.DoubleSide,
+		map: loader.load("strts/tree.jpg"),
+	});
+	
+	var geometry6 = new THREE.BoxGeometry(500,500,500);
+	
+	var school = new THREE.Mesh(geometry5, material5);
+	school.position.set(350,175,800);
+	var school2 = new THREE.Mesh(geometry5, material5);
+	school2.position.set(-350,175,800)
+	var school3 = new THREE.Mesh(new THREE.BoxGeometry(751,151,51),new THREE.MeshBasicMaterial({
+		side: THREE.DoubleSide,
+		map: loader.load("strts/TTU.jpg"),
+	}));
+	school3.position.set(0,400,800)
+	
+	var S711 = new THREE.Mesh(geometry6, new THREE.MeshBasicMaterial({
+		//color: 0x00ff00,
+		side: THREE.DoubleSide,
+		map: loader.load("strts/subway.jpg"),
+	}));
+	S711.position.set(-550,250,-1050)
+	
+	var S7112 = new THREE.Mesh(geometry6, new THREE.MeshBasicMaterial({
+		//color: 0x00ff00,
+		side: THREE.DoubleSide,
+		map: loader.load("strts/s711.jpg"),
+	}));
+	S7112.position.set(550,250,-1050)
+	
+	
+	
+	AllRoad.add(road1,road2,road3,road4,road5,manRoad,manRoad1,school,school2,school3,S711,S7112);
+	AllRoad.position.set(0,-1,0);
+	scene.add(AllRoad);
+	
+	
+
+}
+
+function buildVehicle() {
+  var geometry = new THREE.Geometry();
+  geometry.vertices.push(
+    new THREE.Vector3(80, 0, 0),
+    new THREE.Vector3(0, 40, 0),
+    new THREE.Vector3(0, 0, 40),
+    new THREE.Vector3(0, 0, -40)
+  );
+	var face;
+  face = new THREE.Face3(0, 1, 2);
+  geometry.faces.push(face);
+  face = new THREE.Face3(1, 3, 2);
+  geometry.faces.push(face);
+  face = new THREE.Face3(3, 1, 0);
+  geometry.faces.push(face);
+  face = new THREE.Face3(2, 3, 0);
+  geometry.faces.push(face);
+
+  geometry.computeBoundingSphere();
+  geometry.computeFaceNormals();
+  geometry.computeVertexNormals();
+
+
+
+  var material = new THREE.MeshNormalMaterial();
+  return new THREE.Mesh(geometry, material);
+}
+
+function init() {
+
+  clock = new THREE.Clock();
+  scene = new THREE.Scene();
+
+  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
+  camera.position.z = 750;
+  camera.position.y = 1050;
+  
+  camera3rd = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 1, 10000);
+  scene.add(camera3rd);
+
+  var gridXZ = new THREE.GridHelper(200, 20, 'red', 'white');
+  //scene.add(gridXZ);
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x888888);
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  
+  controls.enableKeys = false;
+  
+  document.body.appendChild(renderer.domElement);
+  
+  pointLight = new THREE.PointLight(0xffffff, 1, 300);
+  pointLight.position.set(0, 350, 0);
+  scene.add(pointLight);
+  
+  
+  var direLight = new THREE.DirectionalLight(0xffffff, 1);
+  //direLight.position.set(0, 350, 0);
+  scene.add(direLight);
+  ////////////////////////////////////////////////////////////////////////
+  speed = 5.0;
+  angle = 0.0;
+  	
+  car = buildVehicle();
+  scene.add(car)
+  buildRoad();
+
+}
+
+function update(dt) {
+
+  keyboard.update();
+	
+	if(engine == true){
+		if ( keyboard.pressed("left") ) 
+			angle += 0.01;               
+		if ( keyboard.pressed("right") )
+			angle -= 0.01;               
+		if ( keyboard.pressed("up") )  
+			speed += 0.5; 
+		else{
+			speed = speed*0.99
+			if(speed < 1)speed = 0;
+		}
+		if ( keyboard.pressed("down") )  
+			speed -= 0.5;  
+		if ( keyboard.pressed("space") )  
+			speed = 0; 
+
+		console.log(speed);
+		speed = Math.clamp (speed, 0.0, 100.0);		
+		vel = new THREE.Vector3(speed,0,0);
+		
+		vel.applyAxisAngle (new THREE.Vector3(0,1,0), angle);
+		pos.add (vel.clone().multiplyScalar(dt)); 	
+	}
+}
+
+function animate() {
+
+  controls.update();
+  
+  if ( keyboard.down("home") )  {
+		engine = !engine;
+		speed = 0;
+		console.log(engine)
+  }
+		
+  var dt = clock.getDelta();
+  update(dt);
+  // car update
+  car.position.copy(pos);
+  car.rotation.y = angle;
+  
+  var cameraOffset = car.localToWorld (new THREE.Vector3(-500,500,0));
+  camera3rd.position.copy(cameraOffset);
+  camera3rd.lookAt(car.position);
+
+  requestAnimationFrame(animate);
+  render();
+}
+
+function render() {
+  if(change3rd == false)
+  renderer.render(scene, camera);
+  
+  else
+  renderer.render(scene, camera3rd);
+}
+
+
+
+</script><div><canvas width="1920" height="950" style="width: 1536px; height: 760px;"></canvas></div>
+
+
+
+</body></html>
