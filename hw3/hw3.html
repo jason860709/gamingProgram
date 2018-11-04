@@ -1,0 +1,364 @@
+<html><head>
+<style>
+	body {
+	  background-color: #fff;
+	  color: #111;
+	  margin: 0px;
+	  overflow: hidden;
+	  font-family: Monospace;
+	  font-size: 20px;
+	}
+	
+	#info {
+	  position: absolute;
+	  top: 0px;
+	  width: 100%;
+	  padding: 5px;
+	  text-align: center;
+	  color: #ffff00
+	}
+	
+	a {
+	  color: #00ffff
+	}
+	
+	strong {
+	  color: red
+	}
+	
+	#container {
+	  z-index: 0;
+	  left: 0px;
+	  top: 0px;
+	  overflow: hidden;
+	  position: absolute;
+	  width: 100%;
+	  height: 100%;
+	}
+
+
+</style>
+</head>
+
+<body> 
+<div id="info">
+  Hw3
+  <br>
+  <button id="play" style="width:20%">Play</button> 
+  <br> <a href="https://youtu.be/81jCP0bImLQ?t=57">MUSIC</a>
+  <br> <a href="https://developers.google.com/web/updates/2017/09/autoplay-policy-changes">Chrome autoplay policy change</a>
+</div>
+
+
+<audio id="soundtrack" autoplay="" loop="" style="display:none">
+<source src="sounds/BGM.mp3" type="audio/mp3">
+</audio>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/84/three.min.js"></script>
+<script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.5/dat.gui.min.js"></script>
+<script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+<script>
+
+
+
+
+var scene, renderer, camera;
+var body, RlowerArm, RupperArm, LlowerArm, LupperArm,Rleg,Lleg;
+var T = 6;
+var period = 4
+var isPaused = false;
+var clock = new THREE.Clock();
+var ts = clock.getElapsedTime();
+var intKey = [];
+var  soundTrack;
+var voice = 0.1
+
+$('#play').click ( function() {
+	isPaused = !isPaused;
+	if (isPaused) { 
+		$('#play').text ('Play')
+		voice = 0.1;
+	} else {
+		$('#play').text ('Pause')
+		voice = 0;
+	}
+});
+
+
+var gcontrols = {
+	RsZ: 0.01,  // s for shoulder
+	RsX: 0.02,
+	RsY: 0.01,
+	ReX: 0.03,
+	
+	LsZ: 0.01,  
+	LsX: 0.02,
+	LsY: 0.01,
+	LeX: 0.03, 	
+	
+	posY: 60,
+	rbod: 0.01
+};
+
+var gcontrols2 = {
+	RsZ: 0.01,  // s for shoulder
+	RsX: -3.0,
+	RsY: 0.199,
+	ReX: -0.856, 
+	
+	LsZ: 0.391,  // s for shoulder
+	LsX: 0.198,
+	LsY: -0.2,
+	LeX: -2.679,  // e	// e for elbow
+	
+	posY: 68.888,
+	rbod:0.01
+};
+
+var gcontrols3 = {
+	RsZ: -0.01,  // s for shoulder
+	RsX: 0.199,
+	RsY: -0.287,
+	ReX: -2.285,
+	
+	LsZ: 0.01,  // s for shoulder
+	LsX: -3.2,
+	LsY: -0.911,
+	LeX: -0.056, 	// e for elbow
+	
+	posY: 60,
+	rbod:0.01
+};
+
+var gcontrols4 = {
+	RsZ: -0.01,  // s for shoulder
+	RsX: -0.149,
+	RsY: -0.079,
+	ReX: -0.625,
+	
+	LsZ: 0.391,  // s for shoulder
+	LsX: 0.198,
+	LsY: -0.2,
+	LeX: -2.679, 	// e for elbow
+	
+	posY: 68.888,
+	rbod:0.01
+};
+
+var gcontrols5 = {
+	RsZ: -1.709,  // s for shoulder
+	RsX: 0.792,
+	RsY: -0.633,
+	ReX: -0.624,
+	
+	LsZ: 1.841,  // s for shoulder
+	LsX: -0.425,
+	LsY: -0.078,
+	LeX: -0.464, 	// e for elbow
+	
+	posY: 68.888,
+	rbod:0.01
+};
+
+var gcontrols6 = {
+	RsZ: -3.021,  // s for shoulder
+	RsX: 0.199,
+	RsY: -0.217,
+	ReX: -0.626,
+	
+	LsZ: 0.01,  // s for shoulder
+	LsX: -1.325,
+	LsY: 0.478,
+	LeX: -0.264, 	// e for elbow
+	
+	posY: 68.888,
+	rbod:1
+};
+
+var gcontrols7 = {
+	RsZ: -0.183,  // s for shoulder
+	RsX: -0.633,
+	RsY: 0.268,
+	ReX: -0.75,
+	
+	LsZ: -0.148,  // s for shoulder
+	LsX: -0.725,
+	LsY: 0.13,
+	LeX: -0.564, 	// e for elbow
+	
+	posY: 68.888,
+	rbod:1.2
+};
+
+
+///////////////////////
+
+var Nkeys = [{s: 0,pose: gcontrols},{s: 0.1,pose: gcontrols}, {s: 0.2, pose: gcontrols2}, {s: 0.3,pose: gcontrols3}, {s: 0.4,pose: gcontrols2}, {s: 0.5,pose: gcontrols3}, {s: 0.6, pose: gcontrols4}, {s: 0.7,pose: gcontrols5}, {s: 0.8,pose: gcontrols6}, {s: 0.9,pose: gcontrols7}, {s: 1,pose: gcontrols}];
+var keys = Nkeys;
+init();
+animate();
+
+
+function buildBody () {
+
+	var body = new THREE.Object3D();
+
+	let boxGeometry;
+	boxGeometry = new THREE.BoxGeometry(50, 100, 30);
+  let torso = new THREE.Mesh(boxGeometry, new THREE.MeshNormalMaterial());
+  torso.position.set(0, 50, 0);
+  body.add(torso);
+
+  let head
+  boxGeometry = new THREE.BoxGeometry(25, 20, 25);
+  head = new THREE.Mesh(boxGeometry, new THREE.MeshNormalMaterial());
+  head.position.set(0,110,0)
+  body.add(head);
+  
+  let arm;
+  RupperArm = new THREE.Object3D();
+  boxGeometry = new THREE.BoxGeometry(10, 40, 10);
+  arm = new THREE.Mesh(boxGeometry, new THREE.MeshNormalMaterial());
+  RupperArm.add(arm);
+  arm.position.set(-5, -20, 0);
+  body.add(RupperArm);
+  RupperArm.position.set(-25, 100, 0);
+
+  RlowerArm = new THREE.Object3D();
+  boxGeometry = new THREE.BoxGeometry(10, 60, 10);
+  arm = new THREE.Mesh(boxGeometry, new THREE.MeshNormalMaterial());
+  RlowerArm.add(arm);
+  arm.position.set(-5, -30, 0);
+  RlowerArm.position.set(0, -40, 0);
+  RupperArm.add(RlowerArm);
+  
+  LupperArm = new THREE.Object3D();
+  boxGeometry = new THREE.BoxGeometry(10, 40, 10);
+  arm = new THREE.Mesh(boxGeometry, new THREE.MeshNormalMaterial());
+  LupperArm.add(arm);
+  arm.position.set(5, -20, 0);
+  body.add(LupperArm);
+  LupperArm.position.set(25, 100, 0);
+
+  LlowerArm = new THREE.Object3D();
+  boxGeometry = new THREE.BoxGeometry(10, 60, 10);
+  arm = new THREE.Mesh(boxGeometry, new THREE.MeshNormalMaterial());
+  LlowerArm.add(arm);
+  arm.position.set(5, -30, 0);
+  LlowerArm.position.set(0, -40, 0);
+  LupperArm.add(LlowerArm);
+  
+  let leg;
+  Rleg = new THREE.Object3D();
+  boxGeometry = new THREE.BoxGeometry(10, 60, 10);
+  leg = new THREE.Mesh(boxGeometry, new THREE.MeshNormalMaterial());
+  Rleg.add(leg);
+  leg.position.set(-13, -30, 0);
+  body.add(Rleg);
+  
+  Lleg = new THREE.Object3D();
+  boxGeometry = new THREE.BoxGeometry(10, 60, 10);
+  leg = new THREE.Mesh(boxGeometry, new THREE.MeshNormalMaterial());
+  Lleg.add(leg);
+  leg.position.set(13, -30, 0);
+  body.add(Lleg);
+  
+	return body;
+}
+
+function init() {
+	soundTrack = document.getElementById ('soundtrack');
+  var width = window.innerWidth;
+  var height = window.innerHeight;
+
+  renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+  renderer.setSize(width, height);
+  renderer.setClearColor(0x888888);
+
+  document.body.appendChild(renderer.domElement);
+
+  scene = new THREE.Scene();
+
+  camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 10000);
+  camera.position.y = 600;
+  camera.position.z = 500;
+  //camera.lookAt(new THREE.Vector3(0, 100, 0));
+  scene.add(camera);
+
+  let controls = new THREE.OrbitControls(camera, renderer.domElement);
+ 	let gridXZ = new THREE.GridHelper(200, 20, 'red', 'white');
+  scene.add(gridXZ);
+  
+  window.addEventListener('resize', onWindowResize, false);
+	/////////////////////////////////////////////////////////////////////////////
+  body = buildBody ();
+  body.position.set(0,60,0);
+  scene.add (body)
+
+}
+
+function keyframe(g) {
+  var t = g % period
+  var s = t / period; // normalized time
+  for (var i = keys.length - 1; i > 0; i--) {
+    if (s > keys[i].s)
+      break;
+  }
+  // linearly interpolate between i & i+1
+  
+  var tt = (s - keys[i].s) / (keys[i + 1].s - keys[i].s);
+  var RupperArmZ = (1 - tt) * keys[i].pose.RsZ + tt * keys[i + 1].pose.RsZ;
+  var RupperArmY = (1 - tt) * keys[i].pose.RsY + tt * keys[i + 1].pose.RsY;
+  var RupperArmX = (1 - tt) * keys[i].pose.RsX + tt * keys[i + 1].pose.RsX;
+  var RlowerArmX = (1 - tt) * keys[i].pose.ReX + tt * keys[i + 1].pose.ReX; 
+  var bodyGG = (1 - tt) * keys[i].pose.posY + tt * keys[i + 1].pose.posY;   
+  RupperArm.rotation.z = RupperArmZ//theta1; //-Math.PI/6;//theta1;
+  RupperArm.rotation.y = RupperArmY//theta2; //-Math.PI/3;//theta2;
+  RupperArm.rotation.x = RupperArmX//theta2; //-Math.PI/3;//theta2;
+  RupperArm.rotation.order = 'ZXY';
+  RlowerArm.rotation.x = RlowerArmX//theta3; //-Math.PI/4;//theta3;
+  var LupperArmZ = (1 - tt) * keys[i].pose.LsZ + tt * keys[i + 1].pose.LsZ;
+  var LupperArmY = (1 - tt) * keys[i].pose.LsY + tt * keys[i + 1].pose.LsY;
+  var LupperArmX = (1 - tt) * keys[i].pose.LsX + tt * keys[i + 1].pose.LsX;
+  var LlowerArmX = (1 - tt) * keys[i].pose.LeX + tt * keys[i + 1].pose.LeX; 
+  var bodyGG = (1 - tt) * keys[i].pose.posY + tt * keys[i + 1].pose.posY;   
+  var bodyRR = (1 - tt) * keys[i].pose.rbod + tt * keys[i + 1].pose.rbod;  
+  LupperArm.rotation.z = LupperArmZ//theta1; //-Math.PI/6;//theta1;
+  LupperArm.rotation.y = LupperArmY//theta2; //-Math.PI/3;//theta2;
+  LupperArm.rotation.x = LupperArmX//theta2; //-Math.PI/3;//theta2;
+  LupperArm.rotation.order = 'ZXY';
+  LlowerArm.rotation.x = LlowerArmX//theta3; //-Math.PI/4;//theta3;
+  body.position.y = bodyGG;
+  body.rotation.y = bodyRR;
+  
+}
+
+function animate() {
+	
+	soundtrack.volume = voice;
+  keyframe(clock.getElapsedTime());
+  requestAnimationFrame(animate);
+  render();
+}
+
+function onWindowResize() {
+  var width = window.innerWidth,
+    height = window.innerHeight;
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+  renderer.setSize(width, height);
+}
+
+
+function render() {
+
+  renderer.render(scene, camera);
+}
+
+
+</script>
+
+</body></html>
