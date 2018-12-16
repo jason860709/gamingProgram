@@ -1,0 +1,428 @@
+<html lang="en"><head>
+	<title>three.js webgl - morphtargets - MD2 controls</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<style>
+		body {
+			color: #000;
+			font-family:Monospace;
+			font-size:13px;
+			text-align:center;
+			font-weight: bold;
+
+			background-color: #fff;
+			margin: 0px;
+			overflow: hidden;
+		}
+
+		#info {
+			position: absolute;
+			padding: 10px;
+			width: 100%;
+			text-align: center;
+			color: #000;
+		}
+
+		a { color: skyblue; }
+	</style>
+</head>
+
+<body>
+<div id="info">
+	<a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> - MD2 Loader -
+	<br>
+	use arrows to control characters, mouse for camera
+	
+	<br>
+	<p id="msg"></p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/94/three.min.js"></script>
+<script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+<script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+<script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
+
+<script src="js/MD2Loader.js"></script>
+<script src="js/MorphBlendMesh.js"></script>
+<script src="js/MD2CharacterComplex.js"></script>
+<script src="js/Gyroscope.js"></script>
+<script>
+class MD2Wrapper {
+	constructor (config, controls, pos, scale = 1) {
+
+		this.md2 = new THREE.MD2CharacterComplex();
+		this.md2.scale = scale
+		this.md2.controls = controls
+		
+		this.md2.onLoadComplete = function () {
+			// here: 'this' is md2
+			
+			// cast and receive shadows
+			this.enableShadows( true );
+
+			this.setWeapon( 0 );
+			this.setSkin( 0 );
+
+			//this.root.position.copy (pos);
+			this.root.position.x = pos.x;
+			this.root.position.z = pos.z;
+			
+			// y is automatically set, accoording to scale ...				
+			console.log ('y is ' + this.root.position.y)
+			
+			scene.add( this.root );
+						
+		}
+		this.md2.loadParts( config );
+					
+	}
+	moveTo(y){
+		this.md2.root.position.y = y;
+	}
+}
+
+
+	var SCREEN_WIDTH = window.innerWidth;
+	var SCREEN_HEIGHT = window.innerHeight;
+
+	var container, stats;
+	var camera, scene, renderer;
+
+	var vegeta2Wrap;
+	var light;
+	
+	var box3, box3Helper;
+	
+	var keyboard = new KeyboardState();
+	
+	var cameraControls;
+	var clock = new THREE.Clock();
+	var star1app = true;
+	var star2app = true;
+	
+	var star;
+	init();
+	animate();
+
+	function init() {
+
+		container = document.createElement( 'div' );
+		document.body.appendChild( container );
+
+		// CAMERA
+
+		camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 4000 );
+		camera.position.set( 0, 150, 1300 );
+
+		// SCENE
+
+		scene = new THREE.Scene();
+		scene.background = new THREE.Color( 0xffffff );
+		scene.fog = new THREE.Fog( 0xffffff, 1000, 4000 );
+
+		scene.add( camera );
+
+		// LIGHTS
+
+		scene.add( new THREE.AmbientLight( 0x222222 ) );
+
+		light = new THREE.DirectionalLight( 0xffffff, 2.25 );
+		light.position.set( 200, 450, 500 );
+
+		light.castShadow = true;
+
+		light.shadow.mapSize.width = 1024;
+		light.shadow.mapSize.height = 512;
+
+		light.shadow.camera.near = 100;
+		light.shadow.camera.far = 1200;
+
+		light.shadow.camera.left = -1000;
+		light.shadow.camera.right = 1000;
+		light.shadow.camera.top = 350;
+		light.shadow.camera.bottom = -350;
+
+		scene.add( light );
+		// scene.add( new THREE.CameraHelper( light.shadow.camera ) );
+
+
+		//  GROUND
+
+		//var gt = new THREE.TextureLoader().load( "grasslight-big.jpg" );
+		var gt = new THREE.TextureLoader().load( "https://i.imgur.com/p8CRm9W.jpg");
+		var gg = new THREE.PlaneBufferGeometry( 16000, 16000 );
+		var gm = new THREE.MeshPhongMaterial( { color: 0xffffff, map: gt } );
+
+		var ground = new THREE.Mesh( gg, gm );
+		ground.rotation.x = - Math.PI / 2;
+		ground.material.map.repeat.set( 64, 64 );
+		ground.material.map.wrapS = THREE.RepeatWrapping;
+		ground.material.map.wrapT = THREE.RepeatWrapping;
+		// note that because the ground does not cast a shadow, .castShadow is left false
+		ground.receiveShadow = true;
+
+		scene.add( ground );
+		
+		let axes = new THREE.AxesHelper (100)
+		scene.add (axes)
+
+		// RENDERER
+
+		renderer = new THREE.WebGLRenderer( { antialias: true } );
+		renderer.setPixelRatio( window.devicePixelRatio );
+		renderer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
+		container.appendChild( renderer.domElement );
+
+		renderer.gammaInput = true;
+		renderer.gammaOutput = true;
+
+		renderer.shadowMap.enabled = true;
+		renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+
+		// EVENTS
+
+		window.addEventListener( 'resize', onWindowResize, false );
+		document.addEventListener( 'keydown', onKeyDown, false );
+		document.addEventListener( 'keyup', onKeyUp, false );
+
+		// CONTROLS
+
+		cameraControls = new THREE.OrbitControls( camera, renderer.domElement );
+		cameraControls.target.set( 0, 50, 0 );
+		cameraControls.update();
+
+		/////////////////////////////////////////////////////////////////////////////
+		// CHARACTER: 
+
+		let configvegeta2 = {
+
+			baseUrl: "md2models/vegeta2/",
+
+			body: "tris.md2",
+			skins: [ "ssvegeta.png" ],
+			weapons:  [ ["wbfg.md2","wbfg.png"] ],
+
+			animations: {
+				move: "run",
+				idle: "stand",
+				jump: "jump",
+				attack: "attack",
+				crouchMove: "cwalk",
+				crouchIdle: "cstand",
+				crouchAttach: "crattack"
+			},
+
+			walkSpeed: 350, //translation speed
+			crouchSpeed: 175
+
+		};
+		let controls = {
+
+			moveForward: false,
+			moveBackward: false,
+			moveLeft: false,
+			moveRight: false
+
+		};
+
+		vegeta2Wrap = new MD2Wrapper (configvegeta2, controls, new THREE.Vector3(400,0,0), 3 );
+		var gyro = new THREE.Gyroscope();  
+		gyro.add( camera );
+	
+		gyro.add( light, light.target );
+		vegeta2Wrap.md2.root.add( gyro );		
+		
+		box3 = new THREE.Box3();
+		box3Helper = new THREE.Box3Helper(box3)
+		scene.add ( box3Helper )
+		
+		
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		let loader = new THREE.TextureLoader()
+		loader.crossOrigin = '';
+		
+		
+		let platform = new THREE.Mesh (new THREE.BoxGeometry(500,100,500), new THREE.MeshBasicMaterial ({
+			transparent:true,
+			//side: THREE.DoubleSide,
+			map:loader.load("strts/back.jpg")
+		}))
+		scene.add (platform)
+		platform.position.y = 5;
+		platform.castShadow = true ;
+		platform.receiveShadow = true;
+		
+		
+		
+		star = new THREE.Mesh (new THREE.BoxGeometry (50,50,50), new THREE.MeshBasicMaterial({
+			side: THREE.DoubleSide,
+			transparent: true, // key to cutout texture
+			map:loader.load("strts/star.jpg"),
+		}))
+		star.castShadow = true ;
+		star.position.set(900,170,300)
+		scene.add (star)
+		
+		star2 = new THREE.Mesh (new THREE.BoxGeometry (50,50,50), new THREE.MeshBasicMaterial({
+			side: THREE.DoubleSide,
+			transparent: true, // key to cutout texture
+			map:loader.load("strts/star.jpg"),
+		}))
+		star2.castShadow = true ;
+		star2.position.set(150,200,100)
+		scene.add (star2)
+  
+		document.body.appendChild(renderer.domElement);
+		
+
+	}
+
+	// EVENT HANDLERS
+	
+	function touch1(){
+		if(star1app == true){
+			if(850 < vegeta2Wrap.md2.root.position.x &&  vegeta2Wrap.md2.root.position.x < 950){
+				if(250 < vegeta2Wrap.md2.root.position.z && vegeta2Wrap.md2.root.position.z < 350){
+				console.log("star 1 down")
+					if(keyboard.pressed("space")){
+						star1app = false;
+						scene.remove(star);
+						console.log("got star 1 ")
+					}
+				}
+			}
+		}
+	}
+	
+	function touch2(){
+		if(star2app == true){
+			if(100 < vegeta2Wrap.md2.root.position.x &&  vegeta2Wrap.md2.root.position.x < 200){
+				if(50 < vegeta2Wrap.md2.root.position.z && vegeta2Wrap.md2.root.position.z < 150){
+				console.log("star 2 down")
+					if(keyboard.pressed("space")){
+						star2app = false;
+						scene.remove(star2);
+						console.log("got star 2 ")
+					}
+				}
+			}
+		}
+	}
+	
+	function update() {
+		
+		vegeta2Wrap.moveTo(groundLevel(vegeta2Wrap.md2.root.position.x,vegeta2Wrap.md2.root.position.z))
+	}
+			
+	function groundLevel (x,z) {
+		if (Math.abs(x) < 250 && Math.abs(z) < 250)
+			return 123;
+		else
+			return 73;
+	}
+
+	
+	
+
+	function onWindowResize( event ) {
+
+		SCREEN_WIDTH = window.innerWidth;
+		SCREEN_HEIGHT = window.innerHeight;
+
+		renderer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
+
+		camera.aspect = SCREEN_WIDTH/ SCREEN_HEIGHT;
+		camera.updateProjectionMatrix();
+
+	}
+
+	function onKeyDown ( event ) {
+
+		event.stopPropagation();
+		let controlsY = vegeta2Wrap.md2.controls;
+
+		switch( event.keyCode ) {
+
+			case 38: /*up*/
+			case 87: /*W*/ 	controlsY.moveForward = true; break;
+
+			case 40: /*down*/
+			case 83: /*S*/ 	 controlsY.moveBackward = true; break;
+
+			case 37: /*left*/
+			case 65: /*A*/   controlsY.moveLeft = true; break;
+
+			case 39: /*right*/
+			case 68: /*D*/    controlsY.moveRight = true; break;
+
+			case 32: /*space*/ controlsY.jump = true; break;
+			// jump: should save the animation before jump
+			// return to that animation, when SPACE is up
+			
+			case 17: /*ctrl*/  controlsY.attack = true; break;
+			
+		}
+
+	}
+
+	function onKeyUp ( event ) {
+
+		event.stopPropagation();
+		let controlsY = vegeta2Wrap.md2.controls;
+		
+		switch( event.keyCode ) {
+
+			case 38: /*up*/
+			case 87: /*W*/ controlsY.moveForward = false; break;
+
+			case 40: /*down*/
+			case 83: /*S*/ 	 controlsY.moveBackward = false; break;
+
+			case 37: /*left*/
+			case 65: /*A*/ 	 controlsY.moveLeft = false; break;
+
+			case 39: /*right*/
+			case 68: /*D*/ 	  controlsY.moveRight = false; break;
+
+			case 32: /*space*/ controlsY.jump = false; break;
+			// jump: should save the animation before jump
+			// return to that animation, when SPACE is up
+
+			case 17: /*ctrl*/  controlsY.attack = false; break;
+
+		}
+
+	}
+
+	//
+
+	function animate() {
+		
+		
+		requestAnimationFrame( animate );
+		render();
+		//console.log(vegeta2Wrap.md2.root.position);
+		touch1();
+		touch2();
+		keyboard.update();
+		update();
+	}
+
+	function render() {
+	
+		box3.setFromObject (vegeta2Wrap.md2.root)
+		
+		var delta = clock.getDelta();
+		if (vegeta2Wrap.md2) {
+			vegeta2Wrap.md2.update (delta)
+		}
+		renderer.render( scene, camera );
+
+	}
+
+</script><div><canvas width="295" height="952" style="width: 236px; height: 762px;"></canvas></div>
+
+
+
+</body></html>
